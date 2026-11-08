@@ -15,8 +15,11 @@
   // Tabs: one screen, panels swap in place
   const tabs = [...document.querySelectorAll('[role="tab"]')];
   const panels = Object.fromEntries(tabs.map((t) => [t.getAttribute('aria-controls'), document.getElementById(t.getAttribute('aria-controls'))]));
+  const win = document.querySelector('.window');
   function open(id, push = true) {
     if (!panels[id]) id = 'merhaba';
+    const before = win.getBoundingClientRect();
+    root.dataset.tab = id;
     tabs.forEach((t) => {
       const on = t.getAttribute('aria-controls') === id;
       t.setAttribute('aria-selected', on);
@@ -25,7 +28,15 @@
       if (on) { const bar = t.parentElement; if (bar.scrollWidth > bar.clientWidth) bar.scrollTo({ left: t.offsetLeft - bar.offsetLeft - 16, behavior: 'smooth' }); }
     });
     panels[id].scrollTop = 0;
-    if (id === 'merhaba') panels[id].querySelectorAll('[data-count]').forEach(countUp);
+    // the character glides between the centred home layout and the side layout
+    const after = win.getBoundingClientRect();
+    if (!reduce && !stacked.matches && before.width && Math.abs(before.left - after.left) > 2) {
+      win.animate([
+        { transform: `translate(${before.left - after.left}px, ${before.top - after.top}px) scale(${before.width / after.width})`, transformOrigin: 'top left' },
+        { transform: 'none', transformOrigin: 'top left' },
+      ], { duration: 520, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    }
+    if (id === 'merhaba') document.querySelectorAll('.side [data-count]').forEach(countUp);
     if (push) history.replaceState(null, '', id === 'merhaba' ? location.pathname : '#' + id);
     // stacked (phone) layout: bring the new panel up under the sticky bar
     if (push && stacked.matches && id !== 'merhaba') {
@@ -62,116 +73,137 @@
   open(location.hash.slice(1) || 'merhaba', false);
 
   // ---------------------------------------------------------------------------
-  // Cursor-following character.
-  // Left/right are real video frames (the turn is played forward and rewound
-  // frame by frame); up/down poses dissolve in from the centre frame.
+  // Cursor-following character. The head lives on a ring of poses around the
+  // centre and follows the cursor's angle continuously; short spokes connect the
+  // ring to the straight-ahead pose.
   const canvas = document.getElementById('dev');
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   const pill = document.getElementById('moodPill');
-  const N = 22;
-  const load = (src) => { const im = new Image(); im.decoding = 'async'; im.src = src; return im; };
-  const seq = Array.from({ length: N }, (_, i) => load(`assets/avatar/seq/${String(i).padStart(2, '0')}.jpg`));
-  const stills = Object.fromEntries(['u', 'ul', 'ur', 'd', 'dl', 'dr'].map((p) => [p, load(`assets/avatar/${p}.jpg`)]));
-  const ready = (im) => im && im.complete && im.naturalWidth > 0;
-
+  const SIZE = 512, COLS = 4, SPOKE_N = 13, RING_N = 10;
   const SECTORS = ['r', 'dr', 'd', 'dl', 'l', 'ul', 'u', 'ur']; // 0°, 45°, … clockwise (y down)
   const LABELS = { c: 'SELAM 👋', l: '← ORAYA BAKIYORUM', r: 'ORAYA BAKIYORUM →', u: 'YUKARIDA NE VAR?', ul: '↖ ORADA MI?', ur: 'ORADA MI? ↗', d: 'AŞAĞIDA NE VAR?', dl: '↙ HMM', dr: 'HMM ↘' };
 
-  // state: side = 'r' | 'l' (which way the video is turned), idx = frame in the turn,
-  // still = pose name being faded over the centre frame, mix = its opacity 0..1
-  const st = { side: 'r', idx: 0, still: null, mix: 0 };
-  let target = 'c';
-  let idleTimer;
-
-  function frame(i, side) {
-    const im = seq[i];
-    if (!ready(im)) return false;
-    if (side === 'l') { ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1); ctx.drawImage(im, 0, 0, W, H); ctx.restore(); }
-    else ctx.drawImage(im, 0, 0, W, H);
-    return true;
+  // Each clip is one image sheet; decode it and touch the GPU up front so the first play doesn't hitch.
+  function sheet(name, n) {
+    const cl = { img: new Image(), n, ok: false };
+    cl.img.src = `assets/avatar/loop/${name}.jpg`;
+    cl.img.decode().catch(() => {}).then(() => {
+      if (!cl.img.naturalWidth) return;
+      cl.ok = true;
+      ctx.drawImage(cl.img, 0, 0, SIZE, SIZE, 0, 0, W, H);
+      draw();
+    });
+    return cl;
   }
-  function draw() {
-    if (!frame(st.idx, st.side)) return;
-    if (st.still && st.mix > 0 && ready(stills[st.still])) {
-      ctx.globalAlpha = st.mix;
-      ctx.drawImage(stills[st.still], 0, 0, W, H);
+  const spokes = SECTORS.map((p) => sheet(`s-${p}`, SPOKE_N));
+  const rings = SECTORS.map((_, i) => sheet(`ring-${i}`, RING_N));
+
+  // r: 0 = straight ahead, 1 = on the ring. a: angle in sector units, a whole number while on a spoke.
+  const st = { r: 0, a: 0, v: 0 };
+  let wantRing = false, wantA = 0, last = 0;
+  const wrap = (d) => ((d + 4) % 8 + 8) % 8 - 4;
+
+  function paint(cl, k) {
+    const i = Math.min(Math.floor(k), cl.n - 1), f = k - i;
+    ctx.drawImage(cl.img, (i % COLS) * SIZE, Math.floor(i / COLS) * SIZE, SIZE, SIZE, 0, 0, W, H);
+    if (f > 0.01 && i < cl.n - 1) {
+      ctx.globalAlpha = f; // blend toward the next frame
+      ctx.drawImage(cl.img, ((i + 1) % COLS) * SIZE, Math.floor((i + 1) / COLS) * SIZE, SIZE, SIZE, 0, 0, W, H);
       ctx.globalAlpha = 1;
     }
   }
+  function draw() {
+    if (st.r < 1) {
+      const cl = st.r === 0 ? spokes.find((c) => c.ok) : spokes[((st.a % 8) + 8) % 8];
+      if (cl && cl.ok) paint(cl, st.r * (cl.n - 1));
+      return;
+    }
+    const a = ((st.a % 8) + 8) % 8, i = Math.floor(a) % 8, cl = rings[i];
+    if (cl.ok) paint(cl, (a - i) * (cl.n - 1));
+    else if (spokes[Math.round(a) % 8].ok) paint(spokes[Math.round(a) % 8], SPOKE_N - 1);
+  }
 
-  // one animation step; returns true while something is still moving
-  function step() {
-    const side = target === 'l' || target === 'r' ? target : null;
-    const still = side || target === 'c' ? null : target;
-    // 1) fade out a still that is no longer wanted
-    if (st.still && st.still !== still) {
-      st.mix = Math.max(0, st.mix - 0.16);
-      if (st.mix === 0) st.still = null;
+  const SPOKE_MS = 360;
+  // advance by elapsed time; returns true while the head still has somewhere to go
+  function update(dt) {
+    const d = wrap(wantA - st.a);
+    const viaCentre = !wantRing || Math.abs(d) > 2.6;   // too far round the ring: pass through the middle
+    let radial = 0; // -1 inward, +1 outward
+    if (st.r >= 1 && !viaCentre) {
+      // on the ring: glide after the cursor
+      const step = d * (1 - Math.exp(-dt / 95));
+      const cap = 0.0075 * dt;
+      st.a += Math.max(-cap, Math.min(cap, step));
+      st.v = 0;
+      if (Math.abs(wrap(wantA - st.a)) < 0.002) { st.a = wantA; return false; }
       return true;
     }
-    // 2) want a still: rewind the turn first, then fade it in
-    if (still) {
-      if (st.idx > 0) { st.idx = Math.max(0, st.idx - 2); return true; }
-      st.still = still;
-      if (st.mix < 1) { st.mix = Math.min(1, st.mix + 0.12); return true; }
-      return false;
-    }
-    // 3) want a side: rewind if facing the other way, otherwise play forward
-    if (side) {
-      if (st.side !== side) {
-        if (st.idx > 0) { st.idx--; return true; }
-        st.side = side;
+    if (viaCentre) {
+      if (st.r >= 1 && Math.abs(st.a - Math.round(st.a)) > 1e-3) {
+        // slide to the nearest spoke first
+        const n = Math.round(st.a), cap = 0.0075 * dt;
+        st.a += Math.max(-cap, Math.min(cap, n - st.a));
+        if (Math.abs(n - st.a) <= 1e-3) st.a = n;
+        return true;
       }
-      if (st.idx < N - 1) { st.idx++; return true; }
-      return false;
+      if (st.r >= 1) st.a = Math.round(st.a);
+      if (st.r <= 0) {
+        st.v = 0;
+        if (!wantRing) return false;
+        st.a = Math.round(wantA);            // leave the middle along the spoke nearest the cursor
+        radial = 1;
+      } else radial = -1;
+    } else {
+      if (st.r <= 0) st.a = Math.round(wantA);
+      radial = 1;
     }
-    // 4) centre: rewind
-    if (st.idx > 0) { st.idx--; return true; }
-    return false;
+    const spoke = spokes[((st.a % 8) + 8) % 8];
+    if (!spoke.ok) return true;              // still downloading
+    const rem = radial > 0 ? 1 - st.r : st.r;
+    const want = radial * Math.max(1 / 1400, Math.min(1 / SPOKE_MS, (rem + 0.02) * 0.012));
+    st.v += (want - st.v) * Math.min(1, dt / 70);
+    st.r = Math.max(0, Math.min(1, st.r + (Math.sign(st.v) === radial ? st.v : radial / 1400) * dt));
+    return true;
   }
 
-  let running = false, last = 0;
+  let running = false;
   function loop(t) {
-    if (t - last >= 33) { // ~30 fps, the video's own pace
-      last = t;
-      const moving = step();
-      draw();
-      if (!moving) { running = false; return; }
-    }
-    requestAnimationFrame(loop);
+    const moving = update(Math.min(50, t - last));
+    last = t;
+    draw();
+    if (moving) requestAnimationFrame(loop); else running = false;
   }
-  function kick() { if (!running) { running = true; requestAnimationFrame(loop); } }
+  function kick() { if (!running) { running = true; requestAnimationFrame((t) => { last = t - 16; loop(t); }); } }
 
-  function setTarget(p) {
-    if (pill.textContent !== LABELS[p]) pill.textContent = LABELS[p];
-    if (p === target) return;
-    target = p;
-    if (reduce) { // jump straight to the end pose
-      st.still = null; st.mix = 0; st.idx = 0;
-      if (p === 'l' || p === 'r') { st.side = p; st.idx = N - 1; }
-      else if (p !== 'c') { st.still = p; st.mix = 1; }
-      draw(); return;
-    }
+  function look(ring, a, label) {
+    const name = !ring ? 'c' : SECTORS[((Math.round(a) % 8) + 8) % 8];
+    const text = label || LABELS[name];
+    if (pill.textContent !== text) pill.textContent = text;
+    wantRing = ring;
+    if (ring) wantA = a;
+    if (reduce) { st.r = ring ? 1 : 0; st.a = ring ? Math.round(a) : st.a; wantA = st.a; draw(); return; }
     kick();
   }
 
+  let settle;
   function aim(x, y) {
     const r = canvas.getBoundingClientRect();
     const dx = x - (r.left + r.width * 0.5);
     const dy = y - (r.top + r.height * 0.3); // face sits in the upper third
-    let p = 'c';
-    if (Math.hypot(dx, dy) > r.width * 0.14) {
-      p = SECTORS[(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8];
-    }
-    setTarget(p);
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => { setTarget('c'); pill.textContent = 'BURADAYIM'; }, 2600);
+    const near = r.width * (wantRing ? 0.1 : 0.14); // wider to leave the centre than to return
+    if (Math.hypot(dx, dy) < near) { clearTimeout(settle); return look(false, 0); }
+    const raw = Math.atan2(dy, dx) / (Math.PI / 4);
+    // linger a little on the eight clean poses, keep moving in between
+    look(true, raw - 0.7 * Math.sin(2 * Math.PI * raw) / (2 * Math.PI));
+    // when the cursor rests, settle on the nearest clean pose
+    clearTimeout(settle);
+    settle = setTimeout(() => { if (wantRing) look(true, Math.round(wantA)); }, 160);
   }
   addEventListener('pointermove', (e) => aim(e.clientX, e.clientY), { passive: true });
   addEventListener('touchstart', (e) => { const t = e.touches[0]; aim(t.clientX, t.clientY); }, { passive: true });
   addEventListener('touchmove', (e) => { const t = e.touches[0]; aim(t.clientX, t.clientY); }, { passive: true });
+  document.documentElement.addEventListener('mouseleave', () => look(false, 0, 'BURADAYIM'));
 
-  seq[0].addEventListener('load', draw);
-  if (ready(seq[0])) draw();
+  draw();
 })();

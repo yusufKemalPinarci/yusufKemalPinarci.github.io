@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="tr">
+<html lang="tr" data-tab="merhaba">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="preload" as="image" href="assets/avatar/seq/00.jpg">
+  <link rel="preload" as="image" href="assets/avatar/loop/s-r.jpg">
   <link rel="stylesheet" href="styles.css">
   <script>
     try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
@@ -40,12 +40,6 @@
         <div class="hero-cta">
           <button class="btn btn-dark" data-go="iletisim">Birlikte çalışalım <span aria-hidden="true">→</span></button>
           <button class="btn btn-ghost" data-go="sap">İşlere bak</button>
-        </div>
-        <div class="stats">
-          <div><b class="serif" data-count="2">2</b><span>+ yıl S/4HANA</span></div>
-          <div><b class="serif" data-count="11">11</b><span>SAP modülü</span></div>
-          <div><b class="serif" data-count="17">17</b><span>greenfield geliştirme</span></div>
-          <div><b class="serif" data-count="8">8</b><span>mobil uygulama</span></div>
         </div>
       </section>
 
@@ -109,17 +103,17 @@
       </section>
 
       <!-- 04 ALBOVIX -->
-      <section class="panel dark" id="albovix" role="tabpanel" aria-labelledby="t-albovix" hidden>
-        <span class="chip chip-lime mono">03 · albovix</span>
+      <section class="panel" id="albovix" role="tabpanel" aria-labelledby="t-albovix" hidden>
+        <span class="chip mono">03 · albovix</span>
         <h2 class="serif">Kendi stüdyom: <em class="script">gündelik işler için.</em></h2>
         <p class="sub">Küçük işletmelerin defterle yürüttüğü işleri telefona taşıyan web uygulamaları. Kurulum yok, tarayıcıdan çalışıyor.</p>
         <div class="apps">
-          <a class="app" href="https://etut.albovix.com/" target="_blank" rel="noopener"><span class="live mono">● CANLI</span><h3>EtütPanel</h3><p>Dershaneler için yoklama, ücret, deneme analizi ve veli uygulaması.</p></a>
-          <a class="app" href="https://masadan.albovix.com/" target="_blank" rel="noopener"><span class="live mono">● CANLI</span><h3>Masadan</h3><p>Kafe ve restoranlara QR ile ortak sepet, mutfak ve yazıcıya sipariş.</p></a>
-          <a class="app" href="https://ugrak.albovix.com/" target="_blank" rel="noopener"><span class="live mono">● CANLI</span><h3>Uğrak</h3><p>Uygulamasız sadakat kartı: dönen QR, NFC, otomatik kampanya.</p></a>
-          <a class="app" href="https://emlakdosya.albovix.com/" target="_blank" rel="noopener"><span class="live mono">● CANLI</span><h3>EmlakDosya</h3><p>Emlak ofisi evrakı; sözleşmeler telefondan imzalanır.</p></a>
-          <a class="app" href="https://rentakayit.albovix.com/" target="_blank" rel="noopener"><span class="live mono">● CANLI</span><h3>RentaKayıt</h3><p>Araç kiralama sözleşmesi WhatsApp'tan onay, hasar fotoğrafıyla teslim.</p></a>
-          <a class="app" href="https://albovix.com/" target="_blank" rel="noopener"><span class="live mono">+ WEB SİTELERİ</span><h3>KOBİ siteleri</h3><p>Diyetisyen, fizyoterapist, muhasebeci, pilates, psikolog, veteriner.</p></a>
+          <a class="app" href="https://etut.albovix.com/" target="_blank" rel="noopener"><span class="badge mono">CANLI</span><h3>EtütPanel</h3><p>Dershaneler için yoklama, ücret, deneme analizi ve veli uygulaması.</p></a>
+          <a class="app" href="https://masadan.albovix.com/" target="_blank" rel="noopener"><span class="badge mono">CANLI</span><h3>Masadan</h3><p>Kafe ve restoranlara QR ile ortak sepet, mutfak ve yazıcıya sipariş.</p></a>
+          <a class="app" href="https://ugrak.albovix.com/" target="_blank" rel="noopener"><span class="badge mono">CANLI</span><h3>Uğrak</h3><p>Uygulamasız sadakat kartı: dönen QR, NFC, otomatik kampanya.</p></a>
+          <a class="app" href="https://emlakdosya.albovix.com/" target="_blank" rel="noopener"><span class="badge mono">CANLI</span><h3>EmlakDosya</h3><p>Emlak ofisi evrakı; sözleşmeler telefondan imzalanır.</p></a>
+          <a class="app" href="https://rentakayit.albovix.com/" target="_blank" rel="noopener"><span class="badge mono">CANLI</span><h3>RentaKayıt</h3><p>Araç kiralama sözleşmesi WhatsApp'tan onay, hasar fotoğrafıyla teslim.</p></a>
+          <a class="app" href="https://albovix.com/" target="_blank" rel="noopener"><span class="badge badge-soft mono">WEB SİTELERİ</span><h3>KOBİ siteleri</h3><p>Diyetisyen, fizyoterapist, muhasebeci, pilates, psikolog, veteriner.</p></a>
         </div>
       </section>
 
@@ -164,13 +158,21 @@
         <div class="window-bar"><i></i><i></i><i></i><span class="mono">ykp.dev · imleci takip ediyor</span></div>
         <div class="window-body">
           <span class="pill mono" id="moodPill">İMLECİ GEZDİR</span>
-          <canvas class="avatar" id="dev" width="544" height="544" role="img" aria-label="Yusuf Kemal'in laptop başında oturan, imleci takip eden 3D karakteri"></canvas>
+          <canvas class="avatar" id="dev" width="512" height="512" role="img" aria-label="Yusuf Kemal'in laptop başında oturan, imleci takip eden 3D karakteri"></canvas>
           <div class="float f1"><b>17</b> geliştirme canlıda</div>
           <div class="float f2"><b>11</b> SAP modülü</div>
           <div class="float f3"><b>5</b> web uygulaması canlıda</div>
         </div>
       </div>
     </div>
+    <aside class="side">
+      <div class="stats">
+        <div><b class="serif" data-count="2">2</b><span>+ yıl S/4HANA</span></div>
+        <div><b class="serif" data-count="11">11</b><span>SAP modülü</span></div>
+        <div><b class="serif" data-count="17">17</b><span>greenfield geliştirme</span></div>
+        <div><b class="serif" data-count="8">8</b><span>mobil uygulama</span></div>
+      </div>
+    </aside>
   </main>
 
   <footer class="foot mono">
